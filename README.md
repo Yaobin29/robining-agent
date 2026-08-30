@@ -12,6 +12,7 @@ tool bridges, and private data separate.
 - Three-layer onion: host adapter → Robin orchestration → tool bridge/backend.
 - Explicit intent types: `WHY`, `HOW`, and `MIX`.
 - Evidence states: `ok`, `partial`, and `blocked`.
+- Core agent specification: [`core/agent.md`](core/agent.md), with a GitHub Agent entry at [`.github/agents/robining-agent.agent.md`](.github/agents/robining-agent.agent.md).
 - No credentials, personal memory, machine state, or project data are required.
 
 ## Quick start

@@ -8,6 +8,7 @@
     "NOTICE",
     "README.md",
     "README.zh-CN.md",
+    ".github/agents/",
     "core/",
     "capabilities/",
     "template/",
