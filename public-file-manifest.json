@@ -1,0 +1,28 @@
+{
+  "name": "Robining Agent",
+  "release": "0.1.0-public-staging",
+  "source_policy": "new implementation from reviewed portable concepts; no local workspace snapshot",
+  "included_paths": [
+    "AGENTS.md",
+    "LICENSE",
+    "NOTICE",
+    "README.md",
+    "core/",
+    "capabilities/",
+    "template/",
+    "projects/example/",
+    "outputs/README.md",
+    "local-runtime/README.md",
+    "provenance-and-license-matrix.md",
+    "redaction-ledger.md",
+    "scripts/"
+  ],
+  "excluded_classes": [
+    "private identity and personal data",
+    "credentials and authentication state",
+    "machine-specific paths and wrappers",
+    "runtime logs, journals, caches, and working memory",
+    "real projects, raw data, reports, and historical outputs",
+    "unreviewed third-party code or assets"
+  ]
+}

@@ -1,0 +1,6 @@
+Robining Agent public release
+
+The public implementation in this staging tree is newly authored for the
+Robining Agent release. Existing local skills and plugins were not copied by
+default. Any future third-party inclusion must be listed here with its source
+and original license.

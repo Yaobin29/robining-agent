@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robining-agent.example/schemas/task-brief.json",
+  "title": "TaskBrief",
+  "type": "object",
+  "required": ["goal", "type", "constraints", "inputs", "requested_outputs"],
+  "properties": {
+    "goal": {"type": "string"},
+    "type": {"enum": ["WHY", "HOW", "MIX"]},
+    "constraints": {"type": "array", "items": {"type": "string"}},
+    "inputs": {"type": "array", "items": {"type": "string"}},
+    "requested_outputs": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": true
+}

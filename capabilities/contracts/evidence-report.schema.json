@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robining-agent.example/schemas/evidence-report.json",
+  "title": "EvidenceReport",
+  "type": "object",
+  "required": ["direct_evidence", "visual_evidence", "proxy_interpretation", "validation", "next_action"],
+  "properties": {
+    "direct_evidence": {"type": "array", "items": {"type": "string"}},
+    "visual_evidence": {"type": "array", "items": {"type": "string"}},
+    "proxy_interpretation": {"type": "array", "items": {"type": "string"}},
+    "validation": {"type": "array", "items": {"type": "string"}},
+    "next_action": {"type": "string"}
+  },
+  "additionalProperties": true
+}

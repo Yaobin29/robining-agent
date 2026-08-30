@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robining-agent.example/schemas/run-summary.json",
+  "title": "RunSummary",
+  "type": "object",
+  "required": ["status", "artifacts", "assumptions", "limits"],
+  "properties": {
+    "status": {"enum": ["ok", "partial", "blocked"]},
+    "artifacts": {"type": "array", "items": {"type": "string"}},
+    "assumptions": {"type": "array", "items": {"type": "string"}},
+    "limits": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": true
+}

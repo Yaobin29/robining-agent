@@ -1,0 +1,7 @@
+{
+  "goal": "Explain why a sample measurement changed and propose a reproducible check.",
+  "type": "MIX",
+  "constraints": ["Use only the supplied sample data"],
+  "inputs": ["examples/sample.csv"],
+  "requested_outputs": ["RoutePlan", "EvidenceReport"]
+}

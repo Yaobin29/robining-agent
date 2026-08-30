@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robining-agent.example/schemas/route-plan.json",
+  "title": "RoutePlan",
+  "type": "object",
+  "required": ["capability", "adapter", "verification_gates"],
+  "properties": {
+    "capability": {"type": "string"},
+    "adapter": {"type": "string"},
+    "backend_candidates": {"type": "array", "items": {"type": "string"}},
+    "verification_gates": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": true
+}
