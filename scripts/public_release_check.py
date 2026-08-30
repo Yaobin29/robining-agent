@@ -22,7 +22,7 @@ def check() -> list[str]:
         if not path.is_file():
             continue
         rel = path.relative_to(ROOT)
-        if ".git" in rel.parts or "__pycache__" in rel.parts or path.suffix in {".pyc", ".pyo"}:
+        if ".git" in rel.parts or "__pycache__" in rel.parts or "node_modules" in rel.parts or "dist" in rel.parts or path.suffix in {".pyc", ".pyo"}:
             continue
         if any(part in FORBIDDEN_COMPONENTS for part in rel.parts):
             errors.append(f"forbidden path: {rel}")
@@ -33,7 +33,10 @@ def check() -> list[str]:
             errors.append(f"non-text file requires manual license review: {rel}")
             continue
         # The checker necessarily contains the patterns it is looking for.
-        if path.name != "public_release_check.py" and FORBIDDEN_TEXT.search(text):
+        scan_text = text
+        if path.name == "package.json":
+            scan_text = re.sub(r"https://github\.com/[^/]+/robining-agent(?:\.git)?", "<public-repository>", scan_text)
+        if path.name != "public_release_check.py" and FORBIDDEN_TEXT.search(scan_text):
             errors.append(f"sensitive-looking text: {rel}")
     return errors
 

@@ -1,6 +1,6 @@
 {
   "name": "Robining Agent",
-  "release": "0.1.0-public-staging",
+  "release": "0.2.0-cli-runtime",
   "source_policy": "new implementation from reviewed portable concepts; no local workspace snapshot",
   "included_paths": [
     "AGENTS.md",
@@ -9,6 +9,14 @@
     "README.md",
     "README.zh-CN.md",
     ".github/agents/",
+    ".github/workflows/",
+    "package.json",
+    "package-lock.json",
+    "tsconfig.json",
+    "src/",
+    "test/",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
     "core/",
     "capabilities/",
     "template/",

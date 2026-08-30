@@ -14,10 +14,51 @@ Robining Agent 是一个面向 Agent 构建者的可移植、本地优先编排�
 ## 快速开始
 
 ```bash
+npm install
+npm run build
+npm link
+robining doctor
+robining
+```
+
+npm 正式发布后，也可以直接使用 `npm install -g robining-agent` 全局安装。
+
+本地开发：
+
+```bash
+npm install
+npm run build
+```
+
+模型调用需要配置供应商凭据：
+
+```bash
+ROBINING_PROVIDER=openai-compatible OPENAI_API_KEY=... robining
+# 或
+ROBINING_PROVIDER=anthropic ANTHROPIC_API_KEY=... robining
+```
+
+路由内核和测试：
+
+```bash
 python3 -m capabilities.robining_agent.cli route --role reusable-capability --lifecycle live --reuse-scope repo-wide --privacy public
 python3 -m capabilities.robining_agent.cli classify --text "为什么测量结果发生变化？"
 python3 -m unittest discover -s template/tests
+npm test
 ```
+
+## CLI 命令
+
+```text
+robining                         交互式 REPL
+robining run --prompt <text>      执行一次 headless 任务
+robining resume <id> --prompt <text> 继续会话
+robining sessions                 列出本地会话
+robining doctor                   检查运行时和模型配置
+```
+
+第一版采用 Node 兼容的 TypeScript，不依赖 Bun 专属 API，因此可以在 Bun
+下运行；CI 会使用 Bun 再次执行构建和测试。
 
 ## 目录结构
 

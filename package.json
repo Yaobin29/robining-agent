@@ -1,0 +1,45 @@
+{
+  "name": "robining-agent",
+  "version": "0.2.0",
+  "description": "Portable six-bucket Agent runtime and CLI",
+  "type": "module",
+  "bin": {
+    "robining": "dist/src/cli.js"
+  },
+  "files": [
+    "dist",
+    "core",
+    "capabilities/project-skills",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/test/*.test.js",
+    "check": "npm run build && npm test",
+    "pack": "npm pack --dry-run",
+    "release:local": "npm run check && npm pack"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "keywords": [
+    "agent",
+    "cli",
+    "llm",
+    "bun",
+    "typescript",
+    "workflow"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yaobin29/robining-agent.git"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19",
+    "typescript": "^5.9.3"
+  }
+}

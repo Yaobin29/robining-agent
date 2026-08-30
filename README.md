@@ -18,10 +18,46 @@ tool bridges, and private data separate.
 ## Quick start
 
 ```bash
+npm install
+npm run build
+npm link
+robining doctor
+robining
+```
+
+After the npm release is published, the same CLI can be installed globally with
+`npm install -g robining-agent`.
+
+For local development:
+
+```bash
+npm install
+npm run build
+```
+
+The CLI requires a provider key only for model-backed runs. Configure
+`ROBINING_PROVIDER=openai-compatible` with `OPENAI_API_KEY`, or
+`ROBINING_PROVIDER=anthropic` with `ANTHROPIC_API_KEY`.
+
+```bash
 python3 -m capabilities.robining_agent.cli route --role reusable-capability --lifecycle live --reuse-scope repo-wide --privacy public
 python3 -m capabilities.robining_agent.cli classify --text "Why did the measurement change?"
 python3 -m unittest discover -s template/tests
+npm test
 ```
+
+## CLI commands
+
+```text
+robining                         interactive REPL
+robining run --prompt <text>      one headless task
+robining resume <id> --prompt <text>
+robining sessions                 list saved sessions
+robining doctor                   inspect runtime and provider setup
+```
+
+The first release uses Node-compatible TypeScript and runs on Bun without
+Bun-specific APIs. A Bun CI job verifies the same build and test scripts.
 
 ## Repository map
 
