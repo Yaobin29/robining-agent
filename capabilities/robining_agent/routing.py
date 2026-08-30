@@ -46,8 +46,8 @@ def route_artifact(*, role: str, lifecycle: str, reuse_scope: str, privacy: str)
 def classify_intent(text: str) -> str:
     """Classify a request as WHY, HOW, or MIX using transparent cues."""
     value = text.strip().lower()
-    why = bool(re.search(r"\b(why|cause|reason|mechanism|failure|explain)\b|为什么|原因|机制|失效", value))
-    how = bool(re.search(r"\b(how|implement|build|fix|optimi[sz]e|steps?)\b|如何|实现|构建|修复|优化|步骤", value))
+    why = bool(re.search(r"\b(why|cause|reason|mechanism|failure|explain)\b", value))
+    how = bool(re.search(r"\b(how|implement|build|fix|optimi[sz]e|steps?)\b", value))
     if why and how:
         return "MIX"
     if why:

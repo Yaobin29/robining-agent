@@ -1,4 +1,4 @@
-# Public capabilities / 公开能力
+# Public capabilities
 
 `capabilities/robining_agent` contains the small deterministic kernel. Public
 skills are intentionally concise and host-neutral. Connector-specific skills,
