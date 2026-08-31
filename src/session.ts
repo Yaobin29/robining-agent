@@ -1,10 +1,13 @@
 import {promises as fs} from "node:fs";
 import path from "node:path";
 import {randomUUID} from "node:crypto";
+import type {ToolCall} from "./types.js";
 
 export interface SessionMessage {
   role: "user" | "assistant" | "tool";
   content: string;
+  toolCallId?: string;
+  toolCalls?: ToolCall[];
 }
 
 export interface SessionRecord {

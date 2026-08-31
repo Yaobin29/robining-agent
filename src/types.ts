@@ -49,7 +49,7 @@ export interface ToolResult {
 
 export interface ModelRequest {
   system: string;
-  messages: Array<{role: "user" | "assistant" | "tool"; content: string; toolCallId?: string}>;
+  messages: Array<{role: "user" | "assistant" | "tool"; content: string; toolCallId?: string; toolCalls?: ToolCall[]}>;
   tools: Array<{name: string; description: string; inputSchema: Record<string, unknown>}>;
   model: string;
 }

@@ -6,9 +6,10 @@ import {test} from "node:test";
 import {AgentRuntime} from "../src/agent.js";
 import {authPath, configPath, saveAuth, saveConfig} from "../src/config.js";
 import {classifyIntent} from "../src/intent.js";
-import {PROVIDER_PRESETS} from "../src/providers.js";
+import {AnthropicProvider, OpenAICompatibleProvider, PROVIDER_PRESETS, type LLMProvider} from "../src/providers.js";
 import {routeTask} from "../src/router.js";
 import {createTools} from "../src/tools.js";
+import type {ModelRequest} from "../src/types.js";
 
 test("classifies WHY, HOW, and MIX", () => {
   assert.equal(classifyIntent("Why did the run fail?"), "WHY");
@@ -49,4 +50,79 @@ test("local setup writes preferences and auth with private permissions", () => {
   assert.equal(statSync(authPath()).mode & 0o777, 0o600);
   if (previous === undefined) delete process.env.XDG_CONFIG_HOME;
   else process.env.XDG_CONFIG_HOME = previous;
+});
+
+class ToolLoopProvider implements LLMProvider {
+  readonly name = "test";
+  readonly model = "test-model";
+  readonly requests: ModelRequest[] = [];
+  private turn = 0;
+
+  async *stream(request: ModelRequest) {
+    this.requests.push(request);
+    if (this.turn++ === 0) yield {type: "tool_call" as const, call: {id: "call-read-1", name: "read", input: {path: "sample.txt"}}};
+    else yield {type: "text" as const, text: "The file was read successfully."};
+    yield {type: "done" as const};
+  }
+}
+
+test("tool loop preserves assistant calls and matching tool results", async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "robining-tool-loop-"));
+  const {writeFileSync} = await import("node:fs");
+  writeFileSync(path.join(root, "sample.txt"), "fixture");
+  const provider = new ToolLoopProvider();
+  const session = {id: "tool-loop-session", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), messages: [] as Array<{role: "user" | "assistant" | "tool"; content: string; toolCallId?: string; toolCalls?: Array<{id: string; name: string; input: Record<string, unknown>}>}>};
+  const summary = await new AgentRuntime({root, provider, session}).run("Read sample.txt and summarize it");
+  assert.equal(summary.status, "ok");
+  assert.equal(provider.requests.length, 2);
+  const assistant = provider.requests[1].messages.find((message) => message.role === "assistant");
+  const tool = provider.requests[1].messages.find((message) => message.role === "tool");
+  assert.equal(assistant?.toolCalls?.[0]?.id, "call-read-1");
+  assert.equal(tool?.toolCallId, "call-read-1");
+  assert.equal(session.messages.find((message) => message.role === "assistant")?.toolCalls?.[0]?.id, "call-read-1");
+  assert.equal(session.messages.find((message) => message.role === "tool")?.toolCallId, "call-read-1");
+});
+
+test("OpenAI-compatible provider serializes tool calls and exposes safe error details", async () => {
+  const originalFetch = globalThis.fetch;
+  let captured: any;
+  globalThis.fetch = async (_url, init) => {
+    captured = JSON.parse(String(init?.body));
+    return new Response(JSON.stringify({error: {message: "invalid tool sequence sk-secret-value"}}), {status: 400, headers: {"content-type": "application/json"}});
+  };
+  try {
+    const provider = new OpenAICompatibleProvider("test", "unused", "https://example.test/v1");
+    const events = [];
+    for await (const event of provider.stream({system: "system", model: "test", tools: [], messages: [
+      {role: "user", content: "read"},
+      {role: "assistant", content: "", toolCalls: [{id: "call-1", name: "read", input: {path: "a.txt"}}]},
+      {role: "tool", content: "ok", toolCallId: "call-1"},
+    ]})) events.push(event);
+    assert.equal(captured.messages[3].tool_call_id, "call-1");
+    assert.equal(captured.messages[2].tool_calls[0].function.arguments, '{"path":"a.txt"}');
+    assert.match(events[0].type === "error" ? events[0].error : "", /invalid tool sequence/);
+    assert.doesNotMatch(events[0].type === "error" ? events[0].error : "", /sk-secret/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Anthropic provider serializes tool_use and tool_result blocks", async () => {
+  const originalFetch = globalThis.fetch;
+  let captured: any;
+  globalThis.fetch = async (_url, init) => {
+    captured = JSON.parse(String(init?.body));
+    return new Response(JSON.stringify({content: [{type: "text", text: "done"}]}), {status: 200, headers: {"content-type": "application/json"}});
+  };
+  try {
+    const provider = new AnthropicProvider("test", "unused");
+    for await (const _event of provider.stream({system: "system", model: "test", tools: [], messages: [
+      {role: "assistant", content: "", toolCalls: [{id: "call-1", name: "read", input: {path: "a.txt"}}]},
+      {role: "tool", content: "ok", toolCallId: "call-1"},
+    ]})) { /* consume */ }
+    assert.equal(captured.messages[0].content[0].type, "tool_use");
+    assert.equal(captured.messages[1].content[0].tool_use_id, "call-1");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

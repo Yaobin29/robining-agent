@@ -35,7 +35,12 @@ export class AgentRuntime {
     const type = classifyIntent(prompt);
     const task: TaskBrief = {goal: prompt, type, constraints: [], inputs: [], requested_outputs: ["RunSummary", "EvidenceReport"]};
     const route = routeTask(task);
-    const messages: ModelRequest["messages"] = session.messages.map((message) => ({role: message.role, content: message.content}));
+    const messages: ModelRequest["messages"] = session.messages.map((message) => ({
+      role: message.role,
+      content: message.content,
+      ...(message.toolCallId ? {toolCallId: message.toolCallId} : {}),
+      ...(message.toolCalls ? {toolCalls: message.toolCalls} : {}),
+    }));
     await this.sessions.append(session, {role: "user", content: prompt});
     if (!provider) return this.finish(session, {status: "blocked", artifacts: [], assumptions: ["No model provider was configured"], limits: ["Set ROBINING_PROVIDER and the corresponding API key"], message: "No model provider configured.", sessionId: session.id});
 
@@ -53,15 +58,21 @@ export class AgentRuntime {
         if (event.type === "tool_call") { toolCalls.push(event.call); this.options.onEvent?.({type: "tool_call", payload: event.call}); }
         if (event.type === "error") failed = event.error;
       }
-      if (text) { lastText = text; messages.push({role: "assistant", content: text}); await this.sessions.append(session, {role: "assistant", content: text}); }
+      if (text || toolCalls.length) {
+        if (text) lastText = text;
+        const assistantMessage = {role: "assistant" as const, content: text, ...(toolCalls.length ? {toolCalls} : {})};
+        messages.push(assistantMessage);
+        await this.sessions.append(session, assistantMessage);
+      }
       if (failed) return this.finish(session, {status: "blocked", artifacts: [], assumptions: [], limits: [failed], message: failed, sessionId: session.id});
       if (!toolCalls.length) return this.finish(session, {status: "ok", artifacts: [], assumptions: [], limits: [], message: lastText, sessionId: session.id});
       for (const call of toolCalls) {
         const tool = this.tools.find((candidate) => candidate.name === call.name);
         const result: ToolResult = tool ? await tool.execute(call, context) : {id: call.id, name: call.name, ok: false, output: "", error: "unknown tool"};
         this.options.onEvent?.({type: "tool_result", payload: result});
-        messages.push({role: "tool", content: JSON.stringify(result), toolCallId: call.id});
-        await this.sessions.append(session, {role: "tool", content: JSON.stringify(result)});
+        const toolMessage = {role: "tool" as const, content: JSON.stringify(result), toolCallId: call.id};
+        messages.push(toolMessage);
+        await this.sessions.append(session, toolMessage);
       }
     }
     return this.finish(session, {status: "partial", artifacts: [], assumptions: [], limits: [`turn limit reached (${maxTurns})`], message: lastText, sessionId: session.id});

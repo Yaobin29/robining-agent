@@ -40,6 +40,39 @@ function parseToolCall(raw: any, fallbackId: string): ToolCall | undefined {
   return {id: raw?.id ?? fallbackId, name: functionCall.name, input};
 }
 
+function redactProviderError(text: string): string {
+  return text.replace(/sk-[A-Za-z0-9_-]{8,}/g, "[redacted]").replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]").slice(0, 800);
+}
+
+async function providerError(response: Response): Promise<string> {
+  let detail = "";
+  try { detail = redactProviderError(await response.text()); } catch { /* ignore unreadable error bodies */ }
+  return `provider returned HTTP ${response.status}${detail ? `: ${detail}` : ""}`;
+}
+
+function openAIMessages(request: ModelRequest): Array<Record<string, unknown>> {
+  return [{role: "system", content: request.system}, ...request.messages.map((message) => {
+    if (message.role === "tool") return {role: "tool", content: message.content, tool_call_id: message.toolCallId};
+    if (message.role === "assistant" && message.toolCalls?.length) {
+      return {role: "assistant", content: message.content || null, tool_calls: message.toolCalls.map((call) => ({id: call.id, type: "function", function: {name: call.name, arguments: JSON.stringify(call.input)}}))};
+    }
+    return {role: message.role, content: message.content};
+  })];
+}
+
+function anthropicMessages(request: ModelRequest): Array<Record<string, unknown>> {
+  return request.messages.map((message) => {
+    if (message.role === "tool") return {role: "user", content: [{type: "tool_result", tool_use_id: message.toolCallId, content: message.content}]};
+    if (message.role === "assistant" && message.toolCalls?.length) {
+      const content: Array<Record<string, unknown>> = [];
+      if (message.content) content.push({type: "text", text: message.content});
+      content.push(...message.toolCalls.map((call) => ({type: "tool_use", id: call.id, name: call.name, input: call.input})));
+      return {role: "assistant", content};
+    }
+    return {role: message.role, content: message.content};
+  });
+}
+
 export class OpenAICompatibleProvider implements LLMProvider {
   constructor(readonly model: string, private readonly apiKey: string, private readonly baseUrl = "https://api.openai.com/v1", readonly name = "openai-compatible") {}
 
@@ -47,10 +80,10 @@ export class OpenAICompatibleProvider implements LLMProvider {
     const response = await fetch(`${this.baseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: {"content-type": "application/json", authorization: `Bearer ${this.apiKey}`},
-      body: JSON.stringify({model: this.model, stream: false, messages: [{role: "system", content: request.system}, ...request.messages.map((message) => message.role === "tool" ? {role: "tool", content: message.content, tool_call_id: message.toolCallId} : {role: message.role, content: message.content})], tools: request.tools.map((tool) => ({type: "function", function: {name: tool.name, description: tool.description, parameters: tool.inputSchema}}))}),
+      body: JSON.stringify({model: this.model, stream: false, messages: openAIMessages(request), tools: request.tools.map((tool) => ({type: "function", function: {name: tool.name, description: tool.description, parameters: tool.inputSchema}}))}),
     });
     if (!response.ok) {
-      yield {type: "error", error: `provider returned HTTP ${response.status}`};
+      yield {type: "error", error: await providerError(response)};
       return;
     }
     const data: any = await response.json();
@@ -72,10 +105,10 @@ export class AnthropicProvider implements LLMProvider {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {"content-type": "application/json", "x-api-key": this.apiKey, "anthropic-version": "2023-06-01"},
-      body: JSON.stringify({model: this.model, max_tokens: 4096, system: request.system, messages: request.messages.map((message) => message.role === "tool" ? {role: "user", content: `Tool result (${message.toolCallId ?? "unknown"}): ${message.content}`} : {role: message.role, content: message.content}), tools: request.tools.map((tool) => ({name: tool.name, description: tool.description, input_schema: tool.inputSchema}))}),
+      body: JSON.stringify({model: this.model, max_tokens: 4096, system: request.system, messages: anthropicMessages(request), tools: request.tools.map((tool) => ({name: tool.name, description: tool.description, input_schema: tool.inputSchema}))}),
     });
     if (!response.ok) {
-      yield {type: "error", error: `provider returned HTTP ${response.status}`};
+      yield {type: "error", error: await providerError(response)};
       return;
     }
     const data: any = await response.json();
