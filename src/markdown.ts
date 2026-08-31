@@ -42,6 +42,11 @@ export function renderMarkdown(text: string, intent: "WHY" | "HOW" | "MIX", colo
     if (bullet) return `  ${style(color, "33", "•")} ${inlineMarkdown(bullet[1], color)}`;
     const numbered = line.match(/^\s*(\d+[.)])\s+(.+)$/);
     if (numbered) return `  ${style(color, "33", numbered[1])} ${inlineMarkdown(numbered[2], color)}`;
+    if (line.includes("|") && line.trim().startsWith("|")) {
+      const cells = line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+      if (cells.length && cells.every((cell) => /^:?-{3,}:?$/.test(cell))) return style(color, "2", `├${cells.map(() => "────────").join("┼")}┤`);
+      return style(color, "2", `│ ${cells.map((cell) => inlineMarkdown(cell, color)).join(" │ ")} │`);
+    }
     const quote = line.match(/^\s*>\s?(.*)$/);
     if (quote) return style(color, "2", `│ ${inlineMarkdown(quote[1], color)}`);
     return inlineMarkdown(line, color);

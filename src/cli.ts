@@ -15,7 +15,7 @@ function argValue(args: string[], name: string): string | undefined {
 }
 
 function help(): void {
-  console.log(`Robining Agent\n\nUsage:\n  robining                         Start interactive mode\n  robining setup                   Configure a provider once\n  robining run --prompt <text>      Run one task\n  robining doctor                   Check runtime and provider setup\n  robining sessions                 List saved sessions\n  robining resume <session-id>      Continue a saved session\n\nOptions:\n  --root <path>                    Project root for tools\n  --yes                            Auto-approve write and shell tools\n  --json                           Emit the final summary as JSON\n\nProviders: DeepSeek, Kimi, GLM, OpenAI-compatible, Anthropic.`);
+  console.log(`Robining Agent\n\nUsage:\n  robining                         Start interactive mode\n  robining setup                   Configure a provider once\n  robining run --prompt <text>      Run one task\n  robining doctor                   Check runtime and provider setup\n  robining sessions                 List saved sessions\n  robining resume <session-id>      Continue a saved session\n\nInteractive commands:\n  /new                             Start a fresh session\n  /sessions                        List saved sessions\n  /resume <session-id>             Resume a saved session\n  /status                          Show current session and route\n  /model                           Show the active provider and model\n  /clear                           Clear the terminal\n  /setup                           Reconfigure the provider\n  /help                            Show this help\n  /exit                            Quit\n\nOptions:\n  --root <path>                    Project root for tools\n  --yes                            Auto-approve write and shell tools\n  --json                           Emit the final summary as JSON\n\nProviders: DeepSeek, Kimi, GLM, OpenAI-compatible, Anthropic.`);
 }
 
 function toolInputSummary(inputValue: Record<string, unknown>): string {
@@ -41,6 +41,10 @@ function printSummary(summary: RunSummary): void {
     console.log(renderMarkdown(summary.message, summary.intent ?? "HOW", Boolean(output.isTTY && !process.env.NO_COLOR)));
   }
   console.log(`\nsession: ${summary.sessionId ?? "none"}`);
+}
+
+function sessionListing(sessions: import("./session.js").SessionRecord[]): Array<{id: string; updatedAt: string; messages: number}> {
+  return sessions.map((session) => ({id: session.id, updatedAt: session.updatedAt, messages: session.messages.length}));
 }
 
 async function doctor(): Promise<number> {
@@ -106,14 +110,49 @@ async function interactive(): Promise<number> {
   const rl = createInterface({input, output});
   console.log("Robining Agent. Type /help for commands; /setup to change provider; /exit to quit.");
   const runtime = new AgentRuntime({provider: providerFromEnv(), confirm: async (message) => (await rl.question(`${message} [y/N] `)).toLowerCase() === "y", onEvent: (event) => { if (event.type === "tool_call") printToolCall(event.payload as ToolCall); if (event.type === "tool_result") printToolResult(event.payload as ToolResult); }});
+  let lastSummary: RunSummary | undefined;
   while (true) {
     const prompt = (await rl.question("\nYou > ")).trim();
     if (!prompt) continue;
     if (prompt === "/exit" || prompt === "/quit") break;
     if (prompt === "/help") { help(); continue; }
-    if (prompt === "/setup") { await rl.close(); return setup(); }
-    const summary = await runtime.run(prompt);
-    printSummary(summary);
+    if (prompt === "/setup") { await rl.close(); const setupCode = await setup(); return setupCode === 0 ? interactive() : setupCode; }
+    if (prompt === "/new") {
+      const session = await runtime.newSession();
+      lastSummary = undefined;
+      console.log(`\nStarted new session: ${session.id}`);
+      continue;
+    }
+    if (prompt === "/sessions") {
+      const sessions = await runtime.listSessions();
+      if (!sessions.length) console.log("\nNo saved sessions.");
+      else sessionListing(sessions).forEach((session) => console.log(`${session.id}  ${session.updatedAt}  ${session.messages} messages`));
+      continue;
+    }
+    if (prompt.startsWith("/resume")) {
+      const id = prompt.slice("/resume".length).trim();
+      if (!id) { console.log("Usage: /resume <session-id>"); continue; }
+      try {
+        const session = await runtime.resumeSession(id);
+        lastSummary = undefined;
+        console.log(`\nResumed session: ${session.id} (${session.messages.length} messages)`);
+      } catch (error) { console.log(`\nCould not resume session: ${error instanceof Error ? error.message : String(error)}`); }
+      continue;
+    }
+    if (prompt === "/status") {
+      const provider = providerFromEnv();
+      const route = lastSummary?.route;
+      console.log(JSON.stringify({sessionId: runtime.sessionId ?? null, provider: provider?.name ?? null, model: provider?.model ?? null, intent: lastSummary?.intent ?? null, bucket: route?.bucket ?? null}, null, 2));
+      continue;
+    }
+    if (prompt === "/model") {
+      const provider = providerFromEnv();
+      console.log(provider ? `\nProvider: ${provider.name}\nModel: ${provider.model}` : "\nNo provider configured. Run /setup.");
+      continue;
+    }
+    if (prompt === "/clear") { output.write("\u001b[2J\u001b[H"); continue; }
+    lastSummary = await runtime.run(prompt);
+    printSummary(lastSummary);
   }
   await rl.close();
   return 0;
@@ -133,7 +172,7 @@ async function main(): Promise<number> {
   }
   if (command === "setup") return setup();
   if (command === "doctor") return doctor();
-  if (command === "sessions") { console.log(JSON.stringify(await new SessionStore().list(), null, 2)); return 0; }
+  if (command === "sessions") { console.log(JSON.stringify(sessionListing(await new SessionStore().list()), null, 2)); return 0; }
   if (command === "run") { const prompt = argValue(args, "--prompt"); if (!prompt) { console.error("--prompt is required"); return 2; } return runTask(prompt, args); }
   if (command === "resume") { const id = args[1]; const prompt = argValue(args, "--prompt"); if (!id || !prompt) { console.error("usage: robining resume <session-id> --prompt <text>"); return 2; } try { const session = await new SessionStore().load(id); return runTask(prompt, args, session); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); return 2; } }
   help();

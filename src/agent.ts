@@ -29,15 +29,35 @@ export interface AgentOptions {
 export class AgentRuntime {
   private readonly tools: Tool[];
   private readonly sessions: SessionStore;
+  private activeSession?: SessionRecord;
 
   constructor(private readonly options: AgentOptions = {}) {
     this.tools = createTools();
     this.sessions = new SessionStore();
+    this.activeSession = options.session;
+  }
+
+  get sessionId(): string | undefined {
+    return this.activeSession?.id;
+  }
+
+  async newSession(): Promise<SessionRecord> {
+    this.activeSession = await this.sessions.create();
+    return this.activeSession;
+  }
+
+  async resumeSession(id: string): Promise<SessionRecord> {
+    this.activeSession = await this.sessions.load(id);
+    return this.activeSession;
+  }
+
+  async listSessions(): Promise<SessionRecord[]> {
+    return this.sessions.list();
   }
 
   async run(prompt: string): Promise<RunSummary> {
     const provider = this.options.provider;
-    const session = this.options.session ?? await this.sessions.create();
+    const session = this.activeSession ?? await this.newSession();
     const type = classifyIntent(prompt);
     const task: TaskBrief = {goal: prompt, type, constraints: [], inputs: [], requested_outputs: ["RunSummary", "EvidenceReport"]};
     const route = routeTask(task);

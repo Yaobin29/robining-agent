@@ -93,7 +93,9 @@ robining doctor                   inspect runtime and provider setup
 ```
 
 Inside interactive mode, use `/setup` to change providers and `/help` to see
-the available commands.
+the available commands. A single interactive process keeps one session across
+all prompts; use `/new` to start a clean session. `/sessions` lists concise
+metadata, and `/resume <session-id>` restores an earlier conversation.
 
 The first release uses Node-compatible TypeScript and runs on Bun without
 Bun-specific APIs. A Bun CI job verifies the same build and test scripts.

@@ -87,7 +87,9 @@ robining sessions                 列出本地会话
 robining doctor                   检查运行时和模型配置
 ```
 
-交互模式中可以使用 `/setup` 更换供应商，使用 `/help` 查看命令。
+交互模式中可以使用 `/setup` 更换供应商，使用 `/help` 查看命令。同一个交互
+进程会持续使用当前 session；使用 `/new` 才会开启新 session。`/sessions` 只
+显示会话摘要，`/resume <session-id>` 可以恢复旧对话。
 
 第一版采用 Node 兼容的 TypeScript，不依赖 Bun 专属 API，因此可以在 Bun
 下运行；CI 会使用 Bun 再次执行构建和测试。

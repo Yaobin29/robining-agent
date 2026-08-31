@@ -100,6 +100,21 @@ test("tool loop preserves assistant calls and matching tool results", async () =
   assert.equal(session.messages.find((message) => message.role === "tool")?.toolCallId, "call-read-1");
 });
 
+test("one runtime keeps the same session until a new session is requested", async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "robining-session-loop-"));
+  const provider = new ToolLoopProvider();
+  const runtime = new AgentRuntime({root, provider});
+  const first = await runtime.run("Read sample.txt");
+  const firstId = runtime.sessionId;
+  await runtime.run("Please continue");
+  assert.equal(runtime.sessionId, firstId);
+  assert.ok(provider.requests.at(-1)?.messages.filter((message) => message.role === "user").length === 2);
+  const fresh = await runtime.newSession();
+  assert.notEqual(fresh.id, firstId);
+  assert.equal(runtime.sessionId, fresh.id);
+  assert.equal(first.sessionId, firstId);
+});
+
 test("OpenAI-compatible provider serializes tool calls and exposes safe error details", async () => {
   const originalFetch = globalThis.fetch;
   let captured: any;
