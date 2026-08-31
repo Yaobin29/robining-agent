@@ -38,6 +38,10 @@ robining
 If you start `robining` without a configured provider in a terminal, the same
 wizard opens automatically.
 
+The terminal UI clearly separates your prompt, tool activity, and the final
+Agent answer. Answers are rendered as readable Markdown with headings, lists,
+code blocks, and evidence boundaries. Set `NO_COLOR=1` for plain text.
+
 The wizard supports DeepSeek, Kimi (Moonshot), GLM (Zhipu), OpenAI-compatible
 endpoints, and Anthropic. Provider preferences are stored in `config.json` and
 the API key is stored separately in a user-only `auth.json` (directory mode
@@ -65,6 +69,11 @@ For any OpenAI-compatible provider, `OPENAI_BASE_URL` and `OPENAI_MODEL` can
 override the preset. Never commit `auth.json` or put an API key in a public
 issue, log, or repository file.
 
+Each run reports its reasoning route in the footer: `WHY`, `HOW`, or `MIX`, plus
+the selected semantic bucket. `WHY` focuses on causes, mechanisms, evidence,
+and limits. `HOW` focuses on goals, actions, and validation. `MIX` explains the
+cause first and then provides the action plan.
+
 ```bash
 python3 -m capabilities.robining_agent.cli route --role reusable-capability --lifecycle live --reuse-scope repo-wide --privacy public
 python3 -m capabilities.robining_agent.cli classify --text "Why did the measurement change?"
@@ -82,6 +91,9 @@ robining resume <id> --prompt <text>
 robining sessions                 list saved sessions
 robining doctor                   inspect runtime and provider setup
 ```
+
+Inside interactive mode, use `/setup` to change providers and `/help` to see
+the available commands.
 
 The first release uses Node-compatible TypeScript and runs on Bun without
 Bun-specific APIs. A Bun CI job verifies the same build and test scripts.

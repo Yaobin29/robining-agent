@@ -3,9 +3,11 @@ import {createInterface} from "node:readline/promises";
 import {stdin as input, stdout as output} from "node:process";
 import path from "node:path";
 import {AgentRuntime} from "./agent.js";
+import {renderMarkdown} from "./markdown.js";
 import {PROVIDER_PRESETS, providerFromEnv, providerPreset} from "./providers.js";
 import {SessionStore} from "./session.js";
 import {authPath, configPath, saveAuth, saveConfig} from "./config.js";
+import type {RunSummary, ToolCall, ToolResult} from "./types.js";
 
 function argValue(args: string[], name: string): string | undefined {
   const index = args.indexOf(name);
@@ -14,6 +16,31 @@ function argValue(args: string[], name: string): string | undefined {
 
 function help(): void {
   console.log(`Robining Agent\n\nUsage:\n  robining                         Start interactive mode\n  robining setup                   Configure a provider once\n  robining run --prompt <text>      Run one task\n  robining doctor                   Check runtime and provider setup\n  robining sessions                 List saved sessions\n  robining resume <session-id>      Continue a saved session\n\nOptions:\n  --root <path>                    Project root for tools\n  --yes                            Auto-approve write and shell tools\n  --json                           Emit the final summary as JSON\n\nProviders: DeepSeek, Kimi, GLM, OpenAI-compatible, Anthropic.`);
+}
+
+function toolInputSummary(inputValue: Record<string, unknown>): string {
+  const entries = Object.entries(inputValue).filter(([key]) => key !== "content" && key !== "text").slice(0, 3);
+  if (!entries.length) return "";
+  return ` (${entries.map(([key, value]) => `${key}=${typeof value === "string" ? value.slice(0, 80) : JSON.stringify(value)}`).join(", ")})`;
+}
+
+function printToolCall(call: ToolCall): void {
+  console.log(`\n⚙ Agent is using ${call.name}${toolInputSummary(call.input)}`);
+}
+
+function printToolResult(result: ToolResult): void {
+  const state = result.ok ? "✓ completed" : `✗ failed: ${result.error ?? "unknown error"}`;
+  console.log(`  ${state}`);
+}
+
+function printSummary(summary: RunSummary): void {
+  const route = summary.route ? ` · bucket: ${summary.route.bucket}` : "";
+  console.log(`\n──────────── ${summary.status.toUpperCase()} · ${summary.intent ?? "UNKNOWN"}${route} ────────────`);
+  if (summary.message) {
+    console.log("\n🤖 Robining Agent\n");
+    console.log(renderMarkdown(summary.message, summary.intent ?? "HOW", Boolean(output.isTTY && !process.env.NO_COLOR)));
+  }
+  console.log(`\nsession: ${summary.sessionId ?? "none"}`);
 }
 
 async function doctor(): Promise<number> {
@@ -67,9 +94,9 @@ async function runTask(prompt: string, args: string[], session?: import("./sessi
   const json = args.includes("--json");
   const autoApprove = args.includes("--yes");
   const rl = createInterface({input, output});
-  const runtime = new AgentRuntime({root, provider: providerFromEnv(), session, confirm: async (message) => autoApprove || (await rl.question(`${message} [y/N] `)).toLowerCase() === "y", onEvent: (event) => { if (!json && event.type === "message") process.stdout.write(String(event.payload)); if (!json && event.type === "tool_call") console.log(`\n[tool] ${JSON.stringify(event.payload)}`); if (!json && event.type === "tool_result") console.log(`\n[result] ${JSON.stringify(event.payload)}`); }});
+  const runtime = new AgentRuntime({root, provider: providerFromEnv(), session, confirm: async (message) => autoApprove || (await rl.question(`${message} [y/N] `)).toLowerCase() === "y", onEvent: (event) => { if (json) return; if (event.type === "tool_call") printToolCall(event.payload as ToolCall); if (event.type === "tool_result") printToolResult(event.payload as ToolResult); }});
   const summary = await runtime.run(prompt);
-  if (!json) console.log(`\n\n[${summary.status}] ${summary.message ?? ""}\nsession: ${summary.sessionId}`);
+  if (!json) printSummary(summary);
   else console.log(JSON.stringify(summary));
   await rl.close();
   return summary.status === "blocked" ? 4 : summary.status === "partial" ? 5 : 0;
@@ -77,16 +104,16 @@ async function runTask(prompt: string, args: string[], session?: import("./sessi
 
 async function interactive(): Promise<number> {
   const rl = createInterface({input, output});
-  console.log("Robining Agent. Type /help for commands; /exit to quit.");
-  const runtime = new AgentRuntime({provider: providerFromEnv(), confirm: async (message) => (await rl.question(`${message} [y/N] `)).toLowerCase() === "y", onEvent: (event) => { if (event.type === "message") process.stdout.write(String(event.payload)); if (event.type === "tool_call") console.log(`\n[tool] ${JSON.stringify(event.payload)}`); if (event.type === "tool_result") console.log(`\n[result] ${JSON.stringify(event.payload)}`); }});
+  console.log("Robining Agent. Type /help for commands; /setup to change provider; /exit to quit.");
+  const runtime = new AgentRuntime({provider: providerFromEnv(), confirm: async (message) => (await rl.question(`${message} [y/N] `)).toLowerCase() === "y", onEvent: (event) => { if (event.type === "tool_call") printToolCall(event.payload as ToolCall); if (event.type === "tool_result") printToolResult(event.payload as ToolResult); }});
   while (true) {
-    const prompt = (await rl.question("\nrobining> ")).trim();
+    const prompt = (await rl.question("\nYou > ")).trim();
     if (!prompt) continue;
     if (prompt === "/exit" || prompt === "/quit") break;
     if (prompt === "/help") { help(); continue; }
     if (prompt === "/setup") { await rl.close(); return setup(); }
     const summary = await runtime.run(prompt);
-    console.log(`\n\n[${summary.status}] ${summary.message ?? ""}\nsession: ${summary.sessionId}`);
+    printSummary(summary);
   }
   await rl.close();
   return 0;

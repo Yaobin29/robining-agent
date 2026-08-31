@@ -5,6 +5,8 @@
   "type": "object",
   "required": ["capability", "adapter", "verification_gates"],
   "properties": {
+    "bucket": {"enum": ["core", "capabilities", "template", "projects", "outputs", "local-runtime"]},
+    "reason": {"type": "string"},
     "capability": {"type": "string"},
     "adapter": {"type": "string"},
     "backend_candidates": {"type": "array", "items": {"type": "string"}},

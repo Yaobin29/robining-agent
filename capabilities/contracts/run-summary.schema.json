@@ -8,7 +8,9 @@
     "status": {"enum": ["ok", "partial", "blocked"]},
     "artifacts": {"type": "array", "items": {"type": "string"}},
     "assumptions": {"type": "array", "items": {"type": "string"}},
-    "limits": {"type": "array", "items": {"type": "string"}}
+    "limits": {"type": "array", "items": {"type": "string"}},
+    "intent": {"enum": ["WHY", "HOW", "MIX"]},
+    "route": {"$ref": "route-plan.json"}
   },
   "additionalProperties": true
 }

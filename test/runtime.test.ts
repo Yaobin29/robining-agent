@@ -6,6 +6,7 @@ import {test} from "node:test";
 import {AgentRuntime} from "../src/agent.js";
 import {authPath, configPath, saveAuth, saveConfig} from "../src/config.js";
 import {classifyIntent} from "../src/intent.js";
+import {ensureMarkdown, renderMarkdown} from "../src/markdown.js";
 import {AnthropicProvider, OpenAICompatibleProvider, PROVIDER_PRESETS, type LLMProvider} from "../src/providers.js";
 import {routeTask} from "../src/router.js";
 import {createTools} from "../src/tools.js";
@@ -15,12 +16,26 @@ test("classifies WHY, HOW, and MIX", () => {
   assert.equal(classifyIntent("Why did the run fail?"), "WHY");
   assert.equal(classifyIntent("How do I build this?"), "HOW");
   assert.equal(classifyIntent("Why did it fail and how can I fix it?"), "MIX");
+  assert.equal(classifyIntent("为什么失败，应该如何修复？"), "MIX");
 });
 
 test("routes a TaskBrief through the Robin layer", () => {
   const route = routeTask({goal: "x", type: "MIX", constraints: [], inputs: [], requested_outputs: []});
   assert.equal(route.capability, "orchestration");
+  assert.equal(route.bucket, "core");
   assert.ok(route.verification_gates.length > 0);
+});
+
+test("routes project, output, and private-state requests to the right buckets", () => {
+  assert.equal(routeTask({goal: "read the project experiment file", type: "HOW", constraints: [], inputs: [], requested_outputs: []}).bucket, "projects");
+  assert.equal(routeTask({goal: "write a final report", type: "HOW", constraints: [], inputs: [], requested_outputs: []}).bucket, "outputs");
+  assert.equal(routeTask({goal: "update the local config token", type: "HOW", constraints: [], inputs: [], requested_outputs: []}).bucket, "local-runtime");
+});
+
+test("formats plain answers as Markdown and renders Markdown structure", () => {
+  const markdown = ensureMarkdown("A short answer.", "WHY");
+  assert.match(markdown, /^## Why/);
+  assert.match(renderMarkdown("## Evidence\n\n- observed", "WHY"), /Evidence/);
 });
 
 test("blocks when no provider is configured", async () => {
@@ -74,6 +89,8 @@ test("tool loop preserves assistant calls and matching tool results", async () =
   const session = {id: "tool-loop-session", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), messages: [] as Array<{role: "user" | "assistant" | "tool"; content: string; toolCallId?: string; toolCalls?: Array<{id: string; name: string; input: Record<string, unknown>}>}>};
   const summary = await new AgentRuntime({root, provider, session}).run("Read sample.txt and summarize it");
   assert.equal(summary.status, "ok");
+  assert.equal(summary.intent, "HOW");
+  assert.equal(summary.route?.bucket, "projects");
   assert.equal(provider.requests.length, 2);
   const assistant = provider.requests[1].messages.find((message) => message.role === "assistant");
   const tool = provider.requests[1].messages.find((message) => message.role === "tool");

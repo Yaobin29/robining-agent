@@ -32,6 +32,10 @@ robining setup
 robining
 ```
 
+终端界面会清楚区分用户输入、工具活动和 Agent 最终回答。回答默认按
+Markdown 排版，支持标题、列表、代码块和证据边界；如需纯文本，可设置
+`NO_COLOR=1`。
+
 向导支持 DeepSeek、Kimi（月之暗面）、GLM（智谱）、OpenAI-compatible 端点和 Anthropic。供应商偏好保存在用户目录的 `config.json`，API key 单独保存在权限为 `0600` 的 `auth.json` 中；环境变量优先，因此 CI 和密钥管理器仍可直接使用。
 
 本地开发：
@@ -59,6 +63,10 @@ ROBINING_PROVIDER=anthropic ANTHROPIC_API_KEY=... robining
 预设模型和端点可通过 `OPENAI_MODEL`、`OPENAI_BASE_URL` 覆盖。不要把
 `auth.json` 或 API key 提交到 Git、日志或 issue。
 
+每次运行结束时会显示 Agent 的判断路线：`WHY`、`HOW` 或 `MIX`，以及选中的
+六桶。`WHY` 重点分析原因、机制、证据和限制；`HOW` 重点给出目标、行动和
+验证；`MIX` 先解释原因，再给出解决方案。
+
 路由内核和测试：
 
 ```bash
@@ -78,6 +86,8 @@ robining resume <id> --prompt <text> 继续会话
 robining sessions                 列出本地会话
 robining doctor                   检查运行时和模型配置
 ```
+
+交互模式中可以使用 `/setup` 更换供应商，使用 `/help` 查看命令。
 
 第一版采用 Node 兼容的 TypeScript，不依赖 Bun 专属 API，因此可以在 Bun
 下运行；CI 会使用 Bun 再次执行构建和测试。

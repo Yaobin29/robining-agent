@@ -10,6 +10,8 @@ export interface TaskBrief {
 }
 
 export interface RoutePlan {
+  bucket: "core" | "capabilities" | "template" | "projects" | "outputs" | "local-runtime";
+  reason: string;
   capability: string;
   adapter: string;
   backend_candidates: string[];
@@ -23,6 +25,8 @@ export interface RunSummary {
   limits: string[];
   message?: string;
   sessionId?: string;
+  intent?: IntentType;
+  route?: RoutePlan;
 }
 
 export interface EvidenceReport {

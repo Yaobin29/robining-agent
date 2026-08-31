@@ -4,12 +4,18 @@ import type {LLMProvider} from "./providers.js";
 import {createTools, type Tool, type ToolContext} from "./tools.js";
 import {SessionStore, type SessionRecord} from "./session.js";
 import type {AgentEvent, ModelRequest, RunSummary, TaskBrief, ToolResult} from "./types.js";
+import {ensureMarkdown} from "./markdown.js";
 
 const SYSTEM_PROMPT = `You are Robining Agent, a local-first orchestration agent.
-Classify each request as WHY, HOW, or MIX. Respect the six semantic buckets.
+First identify the problem type as WHY, HOW, or MIX. For MIX, explicitly separate
+the WHY explanation from the HOW solution. Respect the six semantic buckets.
 Use tools only when needed. Separate observed evidence, proxy interpretation,
 assumptions, limitations, and unresolved claims. Never invent tool output or
-validation. Private data stays local.`;
+validation. Private data stays local.
+Always answer in readable Markdown. Use headings, short paragraphs, lists, and
+code fences for commands. WHY responses should use Why, Evidence, and Limits
+sections. HOW responses should use Goal, Actions, and Validation sections. MIX
+responses should present Why first and How second.`;
 
 export interface AgentOptions {
   root?: string;
@@ -35,6 +41,12 @@ export class AgentRuntime {
     const type = classifyIntent(prompt);
     const task: TaskBrief = {goal: prompt, type, constraints: [], inputs: [], requested_outputs: ["RunSummary", "EvidenceReport"]};
     const route = routeTask(task);
+    const finishWithContext = (summary: RunSummary): Promise<RunSummary> => this.finish(session, {
+      ...summary,
+      intent: type,
+      route,
+      ...(summary.message ? {message: ensureMarkdown(summary.message, type)} : {}),
+    });
     const messages: ModelRequest["messages"] = session.messages.map((message) => ({
       role: message.role,
       content: message.content,
@@ -42,7 +54,7 @@ export class AgentRuntime {
       ...(message.toolCalls ? {toolCalls: message.toolCalls} : {}),
     }));
     await this.sessions.append(session, {role: "user", content: prompt});
-    if (!provider) return this.finish(session, {status: "blocked", artifacts: [], assumptions: ["No model provider was configured"], limits: ["Set ROBINING_PROVIDER and the corresponding API key"], message: "No model provider configured.", sessionId: session.id});
+    if (!provider) return finishWithContext({status: "blocked", artifacts: [], assumptions: ["No model provider was configured"], limits: ["Set ROBINING_PROVIDER and the corresponding API key"], message: "No model provider configured.", sessionId: session.id});
 
     messages.push({role: "user", content: prompt});
     const context: ToolContext = {root: this.options.root ?? process.cwd(), confirm: this.options.confirm ?? (async () => false)};
@@ -64,8 +76,8 @@ export class AgentRuntime {
         messages.push(assistantMessage);
         await this.sessions.append(session, assistantMessage);
       }
-      if (failed) return this.finish(session, {status: "blocked", artifacts: [], assumptions: [], limits: [failed], message: failed, sessionId: session.id});
-      if (!toolCalls.length) return this.finish(session, {status: "ok", artifacts: [], assumptions: [], limits: [], message: lastText, sessionId: session.id});
+      if (failed) return finishWithContext({status: "blocked", artifacts: [], assumptions: [], limits: [failed], message: failed, sessionId: session.id});
+      if (!toolCalls.length) return finishWithContext({status: "ok", artifacts: [], assumptions: [], limits: [], message: lastText, sessionId: session.id});
       for (const call of toolCalls) {
         const tool = this.tools.find((candidate) => candidate.name === call.name);
         const result: ToolResult = tool ? await tool.execute(call, context) : {id: call.id, name: call.name, ok: false, output: "", error: "unknown tool"};
@@ -75,7 +87,7 @@ export class AgentRuntime {
         await this.sessions.append(session, toolMessage);
       }
     }
-    return this.finish(session, {status: "partial", artifacts: [], assumptions: [], limits: [`turn limit reached (${maxTurns})`], message: lastText, sessionId: session.id});
+    return finishWithContext({status: "partial", artifacts: [], assumptions: [], limits: [`turn limit reached (${maxTurns})`], message: lastText, sessionId: session.id});
   }
 
   private async finish(session: SessionRecord, summary: RunSummary): Promise<RunSummary> {
