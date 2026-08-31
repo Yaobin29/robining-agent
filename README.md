@@ -28,6 +28,18 @@ robining
 After the npm release is published, the same CLI can be installed globally with
 `npm install -g robining-agent`.
 
+On the first run, use the guided setup once:
+
+```bash
+robining setup
+robining
+```
+
+The wizard supports DeepSeek, Kimi (Moonshot), GLM (Zhipu), OpenAI-compatible
+endpoints, and Anthropic. Provider preferences are stored in `config.json` and
+the API key is stored separately in a user-only `auth.json` (directory mode
+`0700`, file mode `0600`). Environment variables always take precedence.
+
 For local development:
 
 ```bash
@@ -35,9 +47,20 @@ npm install
 npm run build
 ```
 
-The CLI requires a provider key only for model-backed runs. Configure
-`ROBINING_PROVIDER=openai-compatible` with `OPENAI_API_KEY`, or
-`ROBINING_PROVIDER=anthropic` with `ANTHROPIC_API_KEY`.
+The CLI requires a provider key only for model-backed runs. You can use
+`robining setup` or configure environment variables directly:
+
+| Provider | `ROBINING_PROVIDER` | Key | Default model | Default base URL |
+| --- | --- | --- | --- | --- |
+| DeepSeek | `deepseek` | `DEEPSEEK_API_KEY` | `deepseek-v4-flash` | `https://api.deepseek.com` |
+| Kimi | `kimi` | `KIMI_API_KEY` or `MOONSHOT_API_KEY` | `kimi-k2.5` | `https://api.moonshot.cn/v1` |
+| GLM | `glm` | `GLM_API_KEY` or `ZHIPU_API_KEY` | `glm-4.5` | `https://open.bigmodel.cn/api/paas/v4` |
+| OpenAI-compatible | `openai-compatible` | `OPENAI_API_KEY` | `gpt-4o-mini` | `https://api.openai.com/v1` |
+| Anthropic | `anthropic` | `ANTHROPIC_API_KEY` | `claude-3-5-sonnet-latest` | Anthropic API |
+
+For any OpenAI-compatible provider, `OPENAI_BASE_URL` and `OPENAI_MODEL` can
+override the preset. Never commit `auth.json` or put an API key in a public
+issue, log, or repository file.
 
 ```bash
 python3 -m capabilities.robining_agent.cli route --role reusable-capability --lifecycle live --reuse-scope repo-wide --privacy public
@@ -50,6 +73,7 @@ npm test
 
 ```text
 robining                         interactive REPL
+robining setup                   guided provider setup
 robining run --prompt <text>      one headless task
 robining resume <id> --prompt <text>
 robining sessions                 list saved sessions

@@ -1,6 +1,6 @@
 {
   "name": "robining-agent",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Portable six-bucket Agent runtime and CLI",
   "type": "module",
   "bin": {

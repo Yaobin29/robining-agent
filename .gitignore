@@ -4,6 +4,7 @@ node_modules/
 dist/
 .venv/
 .env
+auth.json
 local-runtime/state/
 outputs/generated/
 .DS_Store

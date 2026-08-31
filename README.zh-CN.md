@@ -23,6 +23,15 @@ robining
 
 npm 正式发布后，也可以直接使用 `npm install -g robining-agent` 全局安装。
 
+首次使用只需运行一次配置向导：
+
+```bash
+robining setup
+robining
+```
+
+向导支持 DeepSeek、Kimi（月之暗面）、GLM（智谱）、OpenAI-compatible 端点和 Anthropic。供应商偏好保存在用户目录的 `config.json`，API key 单独保存在权限为 `0600` 的 `auth.json` 中；环境变量优先，因此 CI 和密钥管理器仍可直接使用。
+
 本地开发：
 
 ```bash
@@ -30,13 +39,23 @@ npm install
 npm run build
 ```
 
-模型调用需要配置供应商凭据：
+也可以不用向导，直接通过环境变量配置：
 
 ```bash
+# DeepSeek
+ROBINING_PROVIDER=deepseek DEEPSEEK_API_KEY=... robining
+# Kimi
+ROBINING_PROVIDER=kimi KIMI_API_KEY=... robining
+# GLM
+ROBINING_PROVIDER=glm GLM_API_KEY=... robining
+# OpenAI-compatible
 ROBINING_PROVIDER=openai-compatible OPENAI_API_KEY=... robining
-# 或
+# Anthropic
 ROBINING_PROVIDER=anthropic ANTHROPIC_API_KEY=... robining
 ```
+
+预设模型和端点可通过 `OPENAI_MODEL`、`OPENAI_BASE_URL` 覆盖。不要把
+`auth.json` 或 API key 提交到 Git、日志或 issue。
 
 路由内核和测试：
 
@@ -51,6 +70,7 @@ npm test
 
 ```text
 robining                         交互式 REPL
+robining setup                   首次供应商配置向导
 robining run --prompt <text>      执行一次 headless 任务
 robining resume <id> --prompt <text> 继续会话
 robining sessions                 列出本地会话

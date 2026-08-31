@@ -1,10 +1,31 @@
 import type {ModelEvent, ModelRequest, ToolCall} from "./types.js";
-import {loadConfig} from "./config.js";
+import {loadAuth, loadConfig, type ConfiguredProvider} from "./config.js";
 
 export interface LLMProvider {
   readonly name: string;
   readonly model: string;
   stream(request: ModelRequest): AsyncIterable<ModelEvent>;
+}
+
+export interface ProviderPreset {
+  id: ConfiguredProvider;
+  label: string;
+  protocol: "openai-compatible" | "anthropic";
+  model: string;
+  baseUrl?: string;
+  keyEnv: string[];
+}
+
+export const PROVIDER_PRESETS: readonly ProviderPreset[] = [
+  {id: "deepseek", label: "DeepSeek", protocol: "openai-compatible", model: "deepseek-v4-flash", baseUrl: "https://api.deepseek.com", keyEnv: ["DEEPSEEK_API_KEY", "OPENAI_API_KEY"]},
+  {id: "kimi", label: "Kimi (Moonshot)", protocol: "openai-compatible", model: "kimi-k2.5", baseUrl: "https://api.moonshot.cn/v1", keyEnv: ["KIMI_API_KEY", "MOONSHOT_API_KEY", "OPENAI_API_KEY"]},
+  {id: "glm", label: "GLM (Zhipu)", protocol: "openai-compatible", model: "glm-4.5", baseUrl: "https://open.bigmodel.cn/api/paas/v4", keyEnv: ["GLM_API_KEY", "ZHIPU_API_KEY", "OPENAI_API_KEY"]},
+  {id: "openai-compatible", label: "OpenAI-compatible", protocol: "openai-compatible", model: "gpt-4o-mini", baseUrl: "https://api.openai.com/v1", keyEnv: ["OPENAI_API_KEY"]},
+  {id: "anthropic", label: "Anthropic", protocol: "anthropic", model: "claude-3-5-sonnet-latest", keyEnv: ["ANTHROPIC_API_KEY"]},
+];
+
+export function providerPreset(id: string | undefined): ProviderPreset | undefined {
+  return PROVIDER_PRESETS.find((preset) => preset.id === id?.toLowerCase());
 }
 
 function parseToolCall(raw: any, fallbackId: string): ToolCall | undefined {
@@ -20,8 +41,7 @@ function parseToolCall(raw: any, fallbackId: string): ToolCall | undefined {
 }
 
 export class OpenAICompatibleProvider implements LLMProvider {
-  readonly name = "openai-compatible";
-  constructor(readonly model: string, private readonly apiKey: string, private readonly baseUrl = "https://api.openai.com/v1") {}
+  constructor(readonly model: string, private readonly apiKey: string, private readonly baseUrl = "https://api.openai.com/v1", readonly name = "openai-compatible") {}
 
   async *stream(request: ModelRequest): AsyncIterable<ModelEvent> {
     const response = await fetch(`${this.baseUrl.replace(/\/$/, "")}/chat/completions`, {
@@ -69,12 +89,13 @@ export class AnthropicProvider implements LLMProvider {
 
 export function providerFromEnv(): LLMProvider | undefined {
   const config = loadConfig();
-  const provider = (process.env.ROBINING_PROVIDER ?? config.provider ?? "openai-compatible").toLowerCase();
-  if (provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
-    return new AnthropicProvider(process.env.ANTHROPIC_MODEL ?? config.model ?? "claude-3-5-sonnet-latest", process.env.ANTHROPIC_API_KEY);
-  }
-  if ((provider === "openai" || provider === "openai-compatible") && process.env.OPENAI_API_KEY) {
-    return new OpenAICompatibleProvider(process.env.OPENAI_MODEL ?? config.model ?? "gpt-4o-mini", process.env.OPENAI_API_KEY, process.env.OPENAI_BASE_URL ?? config.openaiBaseUrl);
-  }
-  return undefined;
+  const auth = loadAuth();
+  const provider = (process.env.ROBINING_PROVIDER ?? config.provider ?? auth.provider ?? "openai-compatible").toLowerCase();
+  const preset = providerPreset(provider) ?? providerPreset("openai-compatible")!;
+  const key = preset.keyEnv.map((name) => process.env[name]).find(Boolean) ?? (auth.provider === provider || !auth.provider ? auth.apiKey : undefined);
+  if (!key) return undefined;
+  const model = process.env.OPENAI_MODEL ?? process.env.ANTHROPIC_MODEL ?? config.model ?? preset.model;
+  if (preset.protocol === "anthropic") return new AnthropicProvider(model, key);
+  const baseUrl = process.env.OPENAI_BASE_URL ?? config.openaiBaseUrl ?? preset.baseUrl;
+  return new OpenAICompatibleProvider(model, key, baseUrl, preset.id);
 }
