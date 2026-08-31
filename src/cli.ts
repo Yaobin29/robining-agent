@@ -112,7 +112,8 @@ async function interactive(): Promise<number> {
   const runtime = new AgentRuntime({provider: providerFromEnv(), confirm: async (message) => (await rl.question(`${message} [y/N] `)).toLowerCase() === "y", onEvent: (event) => { if (event.type === "tool_call") printToolCall(event.payload as ToolCall); if (event.type === "tool_result") printToolResult(event.payload as ToolResult); }});
   let lastSummary: RunSummary | undefined;
   while (true) {
-    const prompt = (await rl.question("\nYou > ")).trim();
+    let prompt: string;
+    try { prompt = (await rl.question("\nYou > ")).trim(); } catch { break; }
     if (!prompt) continue;
     if (prompt === "/exit" || prompt === "/quit") break;
     if (prompt === "/help") { help(); continue; }
