@@ -21,6 +21,8 @@ robining doctor
 robining
 ```
 
+如果在终端中直接运行 `robining` 且尚未配置供应商，向导也会自动打开。
+
 npm 正式发布后，也可以直接使用 `npm install -g robining-agent` 全局安装。
 
 首次使用只需运行一次配置向导：

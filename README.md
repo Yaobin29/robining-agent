@@ -35,6 +35,9 @@ robining setup
 robining
 ```
 
+If you start `robining` without a configured provider in a terminal, the same
+wizard opens automatically.
+
 The wizard supports DeepSeek, Kimi (Moonshot), GLM (Zhipu), OpenAI-compatible
 endpoints, and Anthropic. Provider preferences are stored in `config.json` and
 the API key is stored separately in a user-only `auth.json` (directory mode

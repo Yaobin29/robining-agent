@@ -96,7 +96,14 @@ async function main(): Promise<number> {
   const args = process.argv.slice(2);
   if (args.includes("--help") || args.includes("-h")) { help(); return 0; }
   const command = args[0];
-  if (!command) return interactive();
+  if (!command) {
+    if (input.isTTY && !providerFromEnv()) {
+      console.log("No provider is configured yet. Starting the setup wizard.\n");
+      const setupCode = await setup();
+      if (setupCode !== 0) return setupCode;
+    }
+    return interactive();
+  }
   if (command === "setup") return setup();
   if (command === "doctor") return doctor();
   if (command === "sessions") { console.log(JSON.stringify(await new SessionStore().list(), null, 2)); return 0; }
