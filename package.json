@@ -1,6 +1,6 @@
 {
   "name": "robining-agent",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Portable six-bucket Agent runtime and CLI",
   "type": "module",
   "bin": {
@@ -10,6 +10,7 @@
     "dist",
     "core",
     "capabilities/project-skills",
+    "template/assets",
     "README.md",
     "README.zh-CN.md",
     "LICENSE",

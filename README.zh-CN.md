@@ -1,5 +1,7 @@
 # Robining Agent
 
+![Robining Agent：可检查的乐高式 Agent 框架](template/assets/robining-agent-banner.svg)
+
 Robining Agent 是一个面向 Agent 构建者的可移植、本地优先编排框架。它把用户意图转成可检查的执行路线，并将宿主运行时、工具桥接与私有数据彼此隔离。
 
 ## 核心思想

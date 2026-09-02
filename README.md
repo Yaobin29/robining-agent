@@ -1,5 +1,7 @@
 # Robining Agent
 
+![Robining Agent — inspectable LEGO framework](template/assets/robining-agent-banner.svg)
+
 Chinese documentation: [README.zh-CN.md](README.zh-CN.md)
 
 Robining Agent is a portable, local-first orchestration framework for Agent builders.
