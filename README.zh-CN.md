@@ -11,14 +11,28 @@ Robining Agent 是一个面向 Agent 构建者的可移植、本地优先编排�
 - 不需要凭据、个人记忆、机器状态或真实项目数据即可运行最小内核。
 - 核心 Agent 规范位于 `core/agent.md`，GitHub Agent 入口位于 `.github/agents/robining-agent.agent.md`。
 
-## 快速开始
+## 通过 npm 安装
+
+```bash
+npm install --global robining-agent
+robining
+```
+
+当前 npm 发布版本为 `0.4.0`。更新已有安装：
+
+```bash
+npm update --global robining-agent
+```
+
+可以运行 `robining doctor` 检查运行时和当前供应商。
+
+## 从源码开发安装
 
 ```bash
 npm install
 npm run build
 npm link
 robining doctor
-robining
 ```
 
 如果在终端中直接运行 `robining` 且尚未配置供应商，向导也会自动打开。

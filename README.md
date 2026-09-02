@@ -15,14 +15,28 @@ tool bridges, and private data separate.
 - Core agent specification: [`core/agent.md`](core/agent.md), with a GitHub Agent entry at [`.github/agents/robining-agent.agent.md`](.github/agents/robining-agent.agent.md).
 - No credentials, personal memory, machine state, or project data are required.
 
-## Quick start
+## Install from npm
+
+```bash
+npm install --global robining-agent
+robining
+```
+
+The current npm release is `0.4.0`. To update an existing installation:
+
+```bash
+npm update --global robining-agent
+```
+
+Run `robining doctor` to inspect the runtime and selected provider.
+
+## Development install
 
 ```bash
 npm install
 npm run build
 npm link
 robining doctor
-robining
 ```
 
 After the npm release is published, the same CLI can be installed globally with
